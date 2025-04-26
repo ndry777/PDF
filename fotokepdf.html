@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Konversi Foto ⇄ PDF</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      min-height: 100vh;
+      background: url('assets/bg.jpg') no-repeat center center/cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    .blur-bg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backdrop-filter: blur(8px);
+      background: rgba(255, 255, 255, 0.2);
+      z-index: 0;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 600px;
+      width: 90%;
+      background: #efefef;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.2);
+      text-align: center;
+      animation: fadeIn 1s ease forwards;
+    }
+    .gif-top-right {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 60px;
+      height: auto;
+      z-index: 2;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h2 { color: #350097; margin-bottom: 15px; }
+    .btn {
+      background: #4caf50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      margin: 15px 0;
+      border-radius: 6px;
+      width: 100%;
+      font-weight: 600;
+      transition: 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn:hover {
+      background: #388e3c;
+      transform: translateY(-2px);
+    }
+    .upload-label {
+      display: inline-block;
+      cursor: pointer;
+      color: #350097;
+      font-size: 28px;
+      margin: 10px auto;
+      width: 100%;
+      transition: 0.3s ease;
+    }
+    .upload-label:hover {
+      color: #0F0D5E;
+      transform: scale(1.05);
+    }
+    input[type="file"] { display: none; }
+    .back-home {
+      margin-top: 20px;
+      display: inline-block;
+      text-decoration: none;
+      color: #350097;
+      font-weight: 600;
+      font-size: 16px;
+      transition: 0.3s ease;
+    }
+    .back-home:hover {
+      color: #0F0D5E;
+      transform: translateY(-2px);
+    }
+    .preview-container {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 2px dashed #ddd;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    .preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .preview div {
+      position: relative;
+      display: inline-block;
+      cursor: move;
+    }
+    .preview img {
+      width: 100px;
+      height: 140px;
+      object-fit: cover;
+      border: 2px solid #4caf50;
+      border-radius: 5px;
+      transition: transform 0.2s ease;
+    }
+    .preview img:hover {
+      transform: scale(1.05);
+    }
+    .preview button {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: white;
+      border: none;
+      color: red;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 50%;
+      box-shadow: 0 0 3px rgba(0,0,0,0.3);
+    }
+    .preview button:hover { background: #ffe6e6; }
+    .dev-message {
+      color: red;
+      margin-top: 15px;
+      font-size: 14px;
+      font-weight: bold;
+      animation: blink 1s infinite alternate;
+    }
+    @keyframes blink {
+      from { opacity: 1; }
+      to { opacity: 0.5; }
+    }
+    @media (max-width: 600px) {
+      .gif-top-right { width: 45px; }
+      .preview img { width: 80px; height: 110px; }
+      .btn { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+<div class="blur-bg"></div>
+<div class="container">
+  <img src="assets/gift.gif" alt="GIF Dekorasi" class="gif-top-right">
+  <br><br>
+  <h2>Konversi Foto ⇄ PDF</h2>
+  <button class="btn" onclick="downloadPDF()" style="color:#efefef; background:#0F0D5E;">Download PDF</button>
+  <a href="index.html" class="btn" style="background:#999; color:#fff;"><i class="fas fa-arrow-left"></i> Kembali ke Beranda</a>
+  <label for="fileInput" class="upload-label" title="Upload Foto"><i class="fas fa-upload"></i><br>Upload Foto</label>
+  <input type="file" id="fileInput" accept="image/*" multiple>
+  <div class="preview-container"><div class="preview" id="preview"></div></div>
+  <div id="devMessage" class="dev-message">Note : Sistem kami tidak menggunakan database demi kenyamanan privasi ...</div>
+</div>
+
+<script>
+  let storedImages = [];
+
+  function saveToLocal() {
+    localStorage.setItem('storedImages', JSON.stringify(storedImages));
+  }
+
+  function loadFromLocal() {
+    const data = localStorage.getItem('storedImages');
+    if (data) {
+      storedImages = JSON.parse(data);
+      updatePreview();
+    }
+  }
+
+  function updatePreview() {
+    const preview = document.getElementById('preview');
+    preview.innerHTML = '';
+    storedImages.forEach((src, index) => {
+      const wrapper = document.createElement('div');
+      wrapper.draggable = true;
+      wrapper.dataset.index = index;
+      const img = document.createElement('img');
+      img.src = src;
+      img.onclick = () => {
+        Swal.fire({ imageUrl: src, imageAlt: 'Preview Gambar', showCloseButton: true, showConfirmButton: false });
+      };
+      const delBtn = document.createElement('button');
+      delBtn.innerHTML = '<i class="fas fa-times"></i>';
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        storedImages.splice(index, 1);
+        updatePreview();
+        saveToLocal();
+      };
+      wrapper.appendChild(img);
+      wrapper.appendChild(delBtn);
+      preview.appendChild(wrapper);
+    });
+  }
+
+  document.getElementById('fileInput').addEventListener('change', function() {
+    if (this.files.length === 0) {
+      Swal.fire('Oops!', 'Silakan pilih foto dulu.', 'warning');
+      return;
+    }
+    document.getElementById('devMessage').style.display = 'none';
+    Array.from(this.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        storedImages.push(e.target.result);
+        updatePreview();
+        saveToLocal();
+      };
+      reader.readAsDataURL(file);
+    });
+    this.value = '';
+  });
+
+  async function downloadPDF() {
+    if (storedImages.length === 0) {
+      Swal.fire('Oops!', 'Tambahkan minimal 1 foto terlebih dahulu.', 'warning');
+      return;
+    }
+    Swal.fire({ title: 'Sedang Memproses...', text: 'Tunggu sebentar, PDF sedang dibuat.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const width = 210, height = 297;
+    for (let i = 0; i < storedImages.length; i++) {
+      if (i > 0) pdf.addPage();
+      const img = new Image();
+      img.src = storedImages[i];
+      await new Promise(resolve => img.onload = resolve);
+      let imgWidth = img.width, imgHeight = img.height;
+      const ratio = Math.min(width / imgWidth, height / imgHeight);
+      imgWidth *= ratio;
+      imgHeight *= ratio;
+      const x = (width - imgWidth) / 2;
+      const y = (height - imgHeight) / 2;
+      pdf.addImage(img, 'JPEG', x, y, imgWidth, imgHeight);
+    }
+    let randomName = `FotoPDF_${Date.now()}_${Math.floor(Math.random() * 1000)}.pdf`;
+    pdf.save(randomName);
+    Swal.fire('Sukses!', `PDF berhasil didownload sebagai <br><b>${randomName}</b>!`, 'success');
+  }
+
+  loadFromLocal();
+</script>
+</body>
+</html>
